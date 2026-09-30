@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Between Tongues — a translation tool</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #14171c;
+    --ink-soft: #232a33;
+    --paper: #ede7d9;
+    --paper-dim: #ddd5c1;
+    --paper-text: #23291f;
+    --paper-text-soft: #5b5b4f;
+    --gold: #b98d1c;
+    --gold-deep: #8a6913;
+    --sage: #6f8a76;
+    --error: #a8452f;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ink);
+    color: var(--paper);
+    font-family: 'Inter', sans-serif;
+    line-height: 1.6;
+  }
+
+  .glyphband {
+    position: relative;
+    overflow: hidden;
+    padding: 4.5rem 1.5rem 3rem;
+    border-bottom: 1px solid rgba(237,231,217,0.12);
+  }
+
+  .glyphband::before {
+    content: "文 A あ Я ب अ";
+    position: absolute;
+    top: -1.2rem;
+    right: -0.5rem;
+    font-family: 'Source Serif 4', serif;
+    font-size: 9rem;
+    font-weight: 400;
+    color: rgba(237,231,217,0.05);
+    letter-spacing: 0.3rem;
+    pointer-events: none;
+    line-height: 1;
+    white-space: nowrap;
+  }
+
+  .hero-inner {
+    max-width: 760px;
+    margin: 0 auto;
+    position: relative;
+  }
+
+  .hero-inner h1 {
+    font-family: 'Source Serif 4', serif;
+    font-weight: 600;
+    font-size: clamp(2.4rem, 5vw, 3.6rem);
+    margin: 0 0 1rem;
+    letter-spacing: -0.01em;
+    max-width: 14ch;
+  }
+
+  .hero-inner p {
+    max-width: 46ch;
+    color: rgba(237,231,217,0.72);
+    font-size: 1.05rem;
+    margin: 0;
+  }
+
+  main {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 3rem 1.5rem 5rem;
+  }
+
+  .sheet {
+    background: var(--paper);
+    color: var(--paper-text);
+    border-radius: 2px;
+    padding: 2.25rem 2rem;
+    box-shadow: 0 24px 60px -20px rgba(0,0,0,0.55);
+  }
+
+  .lang-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+  }
+
+  select {
+    flex: 1;
+    min-width: 0;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.95rem;
+    padding: 0.6rem 0.75rem;
+    border: 1px solid var(--paper-dim);
+    border-radius: 2px;
+    background: #fff;
+    color: var(--paper-text);
+  }
+
+  select:focus, textarea:focus, button:focus-visible {
+    outline: 2px solid var(--gold);
+    outline-offset: 1px;
+  }
+
+  .swap {
+    flex: none;
+    width: 38px;
+    height: 38px;
+    border: 1px solid var(--paper-dim);
+    background: #fff;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--paper-text-soft);
+    transition: transform 0.15s ease;
+  }
+
+  .swap:hover { border-color: var(--gold); color: var(--gold-deep); }
+  .swap:active { transform: rotate(180deg); }
+
+  textarea {
+    width: 100%;
+    font-family: 'Source Serif 4', serif;
+    font-size: 1.1rem;
+    padding: 1rem;
+    border: 1px solid var(--paper-dim);
+    border-radius: 2px;
+    background: #fff;
+    color: var(--paper-text);
+    resize: vertical;
+    min-height: 110px;
+  }
+
+  .meta-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 0.6rem 0 1.5rem;
+    font-size: 0.82rem;
+    color: var(--paper-text-soft);
+  }
+
+  button.primary {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 500;
+    padding: 0.7rem 1.5rem;
+    background: var(--ink);
+    color: var(--paper);
+    border: none;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+
+  button.primary:hover { background: var(--ink-soft); }
+  button.primary:disabled { opacity: 0.55; cursor: default; }
+
+  .error-line {
+    display: none;
+    color: var(--error);
+    font-size: 0.85rem;
+    margin-top: 0.75rem;
+  }
+
+  .result {
+    margin-top: 1.75rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--paper-dim);
+  }
+
+  .result-text {
+    font-family: 'Source Serif 4', serif;
+    font-size: 1.25rem;
+    font-style: italic;
+    color: var(--paper-text);
+    min-height: 1.5em;
+  }
+
+  .result-placeholder {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.9rem;
+    color: var(--paper-text-soft);
+    font-style: normal;
+  }
+
+  .result-actions {
+    display: flex;
+    gap: 0.6rem;
+    margin-top: 1rem;
+  }
+
+  .ghost-btn {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.82rem;
+    padding: 0.4rem 0.85rem;
+    background: transparent;
+    border: 1px solid var(--paper-dim);
+    border-radius: 2px;
+    color: var(--paper-text-soft);
+    cursor: pointer;
+  }
+
+  .ghost-btn:hover:not(:disabled) { border-color: var(--sage); color: var(--sage); }
+  .ghost-btn:disabled { opacity: 0.4; cursor: default; }
+
+  footer {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 0 1.5rem 3rem;
+    color: rgba(237,231,217,0.45);
+    font-size: 0.82rem;
+  }
+
+  @media (max-width: 520px) {
+    .glyphband::before { font-size: 6rem; }
+    .sheet { padding: 1.75rem 1.25rem; }
+  }
+</style>
+</head>
+<body>
+
+<div class="glyphband">
+  <div class="hero-inner">
+    <h1>Say it in another tongue</h1>
+    <p>Type a line, choose where it's coming from and where it's going, and read it back in a language you didn't write it in.</p>
+  </div>
+</div>
+
+<main>
+  <div class="sheet">
+    <div class="lang-row">
+      <select id="srcLang" aria-label="Source language">
+        <option value="en">English</option>
+        <option value="hi">Hindi</option>
+        <option value="es">Spanish</option>
+        <option value="fr">French</option>
+        <option value="de">German</option>
+        <option value="ja">Japanese</option>
+        <option value="zh">Chinese</option>
+        <option value="ar">Arabic</option>
+        <option value="ru">Russian</option>
+        <option value="pt">Portuguese</option>
+      </select>
+      <button class="swap" id="swapBtn" aria-label="Swap languages">⇄</button>
+      <select id="tgtLang" aria-label="Target language">
+        <option value="hi">Hindi</option>
+        <option value="en">English</option>
+        <option value="es">Spanish</option>
+        <option value="fr">French</option>
+        <option value="de">German</option>
+        <option value="ja">Japanese</option>
+        <option value="zh">Chinese</option>
+        <option value="ar">Arabic</option>
+        <option value="ru">Russian</option>
+        <option value="pt">Portuguese</option>
+      </select>
+    </div>
+
+    <textarea id="inputText" maxlength="500" placeholder="Write something here"></textarea>
+    <div class="meta-row">
+      <span id="charCount">0 / 500</span>
+      <button class="primary" id="translateBtn">Translate</button>
+    </div>
+    <div class="error-line" id="errorMsg"></div>
+
+    <div class="result">
+      <div class="result-text" id="resultText">
+        <span class="result-placeholder" id="resultPlaceholder">Your translation will sit here.</span>
+      </div>
+      <div class="result-actions">
+        <button class="ghost-btn" id="copyBtn" disabled>Copy</button>
+        <button class="ghost-btn" id="speakBtn" disabled>Listen</button>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer>
+  Translations by MyMemory. Speech uses your browser's built-in voice.
+</footer>
+
+<script>
+  const inputText = document.getElementById('inputText');
+  const charCount = document.getElementById('charCount');
+  const translateBtn = document.getElementById('translateBtn');
+  const resultText = document.getElementById('resultText');
+  const resultPlaceholder = document.getElementById('resultPlaceholder');
+  const errorMsg = document.getElementById('errorMsg');
+  const copyBtn = document.getElementById('copyBtn');
+  const speakBtn = document.getElementById('speakBtn');
+  const srcLang = document.getElementById('srcLang');
+  const tgtLang = document.getElementById('tgtLang');
+  const swapBtn = document.getElementById('swapBtn');
+
+  let currentTranslation = '';
+
+  inputText.addEventListener('input', () => {
+    charCount.textContent = inputText.value.length + ' / 500';
+  });
+
+  swapBtn.addEventListener('click', () => {
+    const s = srcLang.value;
+    srcLang.value = tgtLang.value;
+    tgtLang.value = s;
+  });
+
+  async function translate() {
+    const text = inputText.value.trim();
+    errorMsg.style.display = 'none';
+
+    if (!text) {
+      errorMsg.textContent = 'Write something before translating.';
+      errorMsg.style.display = 'block';
+      return;
+    }
+
+    translateBtn.disabled = true;
+    translateBtn.textContent = 'Translating…';
+
+    try {
+      const langpair = srcLang.value + '|' + tgtLang.value;
+      const url = 'https://api.mymemory.translated.net/get?q=' + encodeURIComponent(text) + '&langpair=' + langpair;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('Request failed');
+      const data = await res.json();
+      const translated = data && data.responseData && data.responseData.translatedText;
+      if (!translated) throw new Error('No translation returned');
+
+      currentTranslation = translated;
+      resultText.textContent = translated;
+      resultPlaceholder.style.display = 'none';
+      copyBtn.disabled = false;
+      speakBtn.disabled = false;
+    } catch (e) {
+      errorMsg.textContent = "Couldn't reach the translation service. Try again in a moment.";
+      errorMsg.style.display = 'block';
+    } finally {
+      translateBtn.disabled = false;
+      translateBtn.textContent = 'Translate';
+    }
+  }
+
+  translateBtn.addEventListener('click', translate);
+
+  copyBtn.addEventListener('click', () => {
+    navigator.clipboard.writeText(currentTranslation).then(() => {
+      const original = copyBtn.textContent;
+      copyBtn.textContent = 'Copied';
+      setTimeout(() => { copyBtn.textContent = original; }, 1400);
+    });
+  });
+
+  speakBtn.addEventListener('click', () => {
+    if (!('speechSynthesis' in window) || !currentTranslation) return;
+    const utter = new SpeechSynthesisUtterance(currentTranslation);
+    utter.lang = tgtLang.value;
+    window.speechSynthesis.speak(utter);
+  });
+</script>
+
+</body>
+</html>
